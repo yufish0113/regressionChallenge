@@ -420,15 +420,87 @@ print("  - Note: beta_1 here is on StressSurvey, so it is not directly comparabl
 （2）Interpretation:
 ① From the multiple regression of Anxiety on StressSurvey and Time, we get: Anxiety=0.589+1.427 *  StressSurvey - 2.780 * Time.
 So the estimated coefficients are: Intercept=0.589 ; StressSurvey coefficient=1.427 ; Time coefficient=−2.780
-② The true model is: Anxiety=1*Stress+0.1*Time.
+② The true model is: Anxiety=1 * Stress+0.1 * Time.
 Because the regression uses ‘StressSurvey’ instead of true ‘Stress’, and because ‘Time’ is correlated with ‘Stress’ in the data, the model cannot recover the true causal parameters. The coefficient on ‘StressSurvey’ does not match the true Stress coefficient (1), and the estimated Time coefficient (−2.780) is far from the true value (0.1). Although the multiple regression fits the data well, the coefficients remain biased due to measurement error in ‘StressSurvey’ and omitted‑variable effects related to ‘Stress’.
 
 
+
 6. **Multiple Regression: Stress + Time.** Run a multiple regression of Anxiety on both **Stress** and Time. What are the estimated coefficients? How do they compare to the true relationship?
+(1) Multiple Regression: Stress + Time
+```{python}
+#| echo: false
+# Question 6: Multiple regression
+# Model: Anxiety ~ Stress + Time
+
+import numpy as np
+
+# Build the design matrix with an intercept, Stress, and Time
+X_true = np.column_stack([
+    np.ones(len(observDF)),
+    observDF["Stress"].to_numpy(),
+    observDF["Time"].to_numpy(),
+])
+
+# Dependent variable
+y = observDF["Anxiety"].to_numpy()
+
+# Estimate OLS coefficients using least squares
+beta_true, *_ = np.linalg.lstsq(X_true, y, rcond=None)
+
+# Compute fitted values and R-squared
+y_hat_true = X_true @ beta_true
+ss_res_true = np.sum((y - y_hat_true) ** 2)
+ss_tot_true = np.sum((y - np.mean(y)) ** 2)
+r2_true = 1 - ss_res_true / ss_tot_true
+
+# True coefficients for this model
+true_beta_0 = 0.0
+true_beta_stress = 1.0
+true_beta_time = 0.1
+
+# Print model estimates
+print("\n=== Q6: Multiple Regression (Anxiety ~ Stress + Time) ===")
+print("Estimated coefficients:")
+print(f"  - Intercept (beta_0): {beta_true[0]:.10f}")
+print(f"  - Stress coefficient (beta_1): {beta_true[1]:.10f}")
+print(f"  - Time coefficient (beta_2): {beta_true[2]:.10f}")
+print(f"  - R-squared: {r2_true:.10f}")
+
+# Print fitted equation
+print("\nFitted equation:")
+print(
+    f"  Anxiety_hat = {beta_true[0]:.10f} "
+    f"+ {beta_true[1]:.10f} * Stress "
+    f"+ {beta_true[2]:.10f} * Time"
+)
+
+# Print comparison to the true relationship
+print("\nComparison to true relationship (Anxiety = Stress + 0.1 * Time):")
+print(f"  - True intercept: {true_beta_0:.1f} | Estimated: {beta_true[0]:.10f} | Difference: {beta_true[0]-true_beta_0:+.10f}")
+print(f"  - True Stress coef: {true_beta_stress:.1f} | Estimated: {beta_true[1]:.10f} | Difference: {beta_true[1]-true_beta_stress:+.10f}")
+print(f"  - True Time coef: {true_beta_time:.1f} | Estimated: {beta_true[2]:.10f} | Difference: {beta_true[2]-true_beta_time:+.10f}")
+
+```
+
+（2）Interpretation:
+① From the multiple regression of Anxiety on 'Stress' and 'Time', we obtain the fitted model: Anxiety=0+1 * Stress + 0.1 * Time
+So the estimated coefficients are: Intercept=approximately 0 ; Stress coefficient=1 ; Time coefficient=0.1
+The R^2 is essentially 1.000, indicating an almost perfect fit.
+② The true model is: Anxiety=1 * Stress+0.1 * Time.
+In this specification, the regression uses exactly the same predictors as the true model (Stress and Time), rather than a noisy proxy like ‘StressSurvey’. As a result, the estimated coefficients match the true parameters almost exactly. This shows that when we include the correct variables and the model is correctly specified, OLS can fully recover the true causal relationship.
+
 
 7. **Model Comparison.** Compare the R-squared values and coefficient interpretations between the two multiple regression models (Questions 5 and 6). Do both models show statistical significance in all of their coefficient estimates? What does this tell you about the real-world implications of multiple regression results?
+(1) Comparison of R-squared and coefficients
+The multiple regression using ‘StressSurvey’ + ‘Time’ (Q5) achieves an R^2 of about 0.935, while the regression using the true predictors ‘Stress’ + ‘Time’ (Q6) achieves an R^2 of essentially 1.000. This difference reflects model specification that the Q6 model uses the exact variables from the true data generating process, so it fits almost perfectly. In contrast, the Q5 model replaces Stress with ‘StressSurvey’, which is a noisy proxy, leading to a lower R^2 and biased coefficient estimates.
+The coefficients also differ sharply. In Q6, the estimated coefficients match the true values almost exactly (Stress = 1, Time = 0.1). In Q5, the coefficient on ‘StressSurvey’ does not equal the true ‘Stress’ coefficient, and the ‘Time’ coefficient is strongly distorted because ‘StressSurvey’ does not fully capture the variation in Stress.
 
-### Question for 95% Grade
+(2) Statistical significance and real world implications
+Both models would likely show statistically significant coefficients because the predictors are correlated with Anxiety. 
+However, significance alone does not guarantee that the coefficients represent true causal effects. Q5 demonstrates this clearly: even with a high R^2 and significant coefficients, the estimates are biased because the model uses an imperfect proxy and omits the true Stress variable. Q6 shows that only when the correct variables are included can the regression recover the true causal relationship.
+In real world applications, this shows an important point: a regression model can look “good” on paper, with high R^2, significant coefficients, yet still be wrong about the underlying causal effects if key variables are missing or measured poorly. Good statistical results do not automatically guarantee correct causal interpretation.
+
+
 
 8. **Real-World Implications.** For each of the two multiple regression models, assume their outputs were published in academic journals and then picked up by the popular press. What headline about time spent on social media and its effect on anxiety would you expect from a press outlet covering the first model? What headline for the second model? Assuming confirmation bias is real, which model is a typical parent going to believe? Which model will Facebook, Instagram, and TikTok executives prefer?
 
