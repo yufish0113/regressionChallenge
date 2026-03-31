@@ -10,81 +10,6 @@ execute:
 
 # Regression Challenge - Linear Model Interpretability
 
-:::: {.callout-important}
-## 📋 What You Need To Do
-
-- [ ] Fork [this repository](https://github.com/flyaflya/regressionChallenge) to create `regressionChallenge` in your GitHub
-- [ ] Clone locally and open in Cursor
-- [ ] Write your analysis in this `index.qmd`
-- [ ] Render to HTML (`quarto render` or Render button)
-- [ ] Push HTML to your repo and enable GitHub Pages
-- [ ] Share your site: `https://[your-username].github.io/regressionChallenge/`
-::::
-
-:::: {.callout-note}
-## 🐍 Python Environment Setup
-
-Before rendering, create a fresh virtual environment and install the required packages:
-
-1. Press `Ctrl+Shift+P` to open the Command Palette
-2. Type **"Python: Select Interpreter"** and select it
-3. Click **"+ Create Virtual Environment..."**
-4. Choose **Venv**
-5. Select your Python installation (e.g., Python 3.12)
-6. Wait for the environment to be created and activated
-
-Then open a terminal and install dependencies:
-
-**Windows:**
-```bash
-py -m pip install jupyter matplotlib pandas seaborn scikit-learn statsmodels
-```
-
-**Mac:**
-```bash
-python3 -m pip install jupyter matplotlib pandas seaborn scikit-learn statsmodels
-```
-::::
-
-:::: {.callout-warning}
-## ⚠️ AI Partnership Required
-
-This challenge pushes boundaries intentionally. You'll tackle problems that normally require weeks of study, but with Cursor AI as your partner (and your brain keeping it honest), you can accomplish more than you thought possible.
-
-**The new reality:** The four stages of competence are Ignorance → Awareness → Learning → Mastery. AI lets us produce Mastery-level work while operating primarily in the Awareness stage. I focus on awareness training, you leverage AI for execution, and together we create outputs that used to require years of dedicated study.
-::::
-
-:::: {.callout-important}
-## 📊 Grading Criteria
-
-- **Questions 1–5:** Required. Up to **75%** of the grade.
-- **Questions 6–7:** Up to **85%** of the grade.
-- **Question 8:** Up to **95%** of the grade.
-- **Question 9:** Up to **100%** of the grade.
-
-**Your grade depends on narrative clarity and insight, not just correct code.**
-::::
-
-:::: {.callout-tip}
-## 📝 How to Present Your Analysis
-
-**This is an investigative report, not a coding exercise.** Present your findings like a professional analyst writing a brief about why we should be skeptical of regression results.
-
-- **Q&A Format:** Each question clearly stated, followed by your answer with analysis, visualizations, and interpretations.
-- **Delete All Instructions:** Remove all challenge instructions, setup guides, and grading criteria from your final rendered HTML. The final report should contain only your Q&A responses.
-- **Hide Code:** Tell a narrative and visual story using `echo: false`; the code can be referenced in your GitHub `*.qmd` source file.
-- **Plotting Convention:** Put the dependent variable (Anxiety) on the vertical axis. Independent variables (StressSurvey, Stress, Time) go on the horizontal axis.
-- **Concise and Human:** No AI babble. Tell the story of what you discovered, focus on insights, and write like a data science consultant.
-
-**What we're looking for:** A compelling 4-8 minute read that demonstrates both the power of linear models for interpretation and the critical pitfalls of over-relying on statistical significance.
-::::
-
-:::: {.callout-warning}
-## 💾 Save Your Work Frequently!
-
-Commit often using Source Control (Ctrl+Shift+G). Commit after completing each regression analysis, after finishing each question, and before asking AI for help with new code.
-::::
-
 ## The Problem: When "Controlling For" Goes Wrong
 
 > "We need to stop believing much of the empirical work we've been doing." - Christopher H. Achen
@@ -140,7 +65,7 @@ When you run regression analysis, you're trying to estimate these $\beta$ coeffi
 
 ```{python}
 #| label: data-generation
-#| echo: true
+#| echo: false
 import pandas as pd
 
 observDF = pd.DataFrame({
@@ -153,6 +78,7 @@ observDF = pd.DataFrame({
 
 ```{python}
 #| label: tbl-observations
+#| echo: false
 #| tbl-cap: "Observed data with known true relationships"
 observDF
 ```
@@ -173,6 +99,7 @@ In the real world, there is no reason to believe linearity holds for either meas
 ```{python}
 #| label: fig-stress-proxy
 #| fig-cap: "StressSurvey as a proxy for actual Stress levels"
+#| echo: false
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -205,8 +132,100 @@ Are your estimates close? If not, your model is telling a wrong story -- even if
 ### Questions for 75% Grade
 
 1. **Bivariate Regression: Anxiety on StressSurvey.** Run a bivariate regression of Anxiety on StressSurvey. What are the estimated coefficients? How do they compare to the true relationship?
+(1) Bivariate Regression: Anxiety on StressSurvey
+```{python}
+#| echo: false
+beta_hat, *_ = np.linalg.lstsq(X, observDF["Anxiety"], rcond=None)
+print("Intercept:", beta_hat[0])
+print("Slope:", beta_hat[1])
+```
+
+（2）Interpretation:
+① From the bivariate regression of Anxiety on StressSurvey, we obtain the fitted line:  Anxiety=-1.524+1.047* StressSurvey
+So the estimated coefficients are: Intercept=-1.524 ; Slope=1.047
+② The true data‑generating model is: Anxiety=1*Stress+0.1*Time. 
+Our regression only uses ‘StressSurvey’, which is a noisy proxy for Stress and does not include ‘Time’ at all. Because of this, the estimated slope (1.047) and intercept (−1.524) do not match the true coefficients. The regression captures the observed pattern between StressSurvey and Anxiety, but it cannot recover the true causal effects from the underlying model.
+
 
 2. **Visualization: StressSurvey vs Anxiety.** Create a scatter plot with the regression line showing the relationship between StressSurvey and Anxiety. Comment on the fit and any potential issues.
+(1)Visualization: StressSurvey vs Anxiety.
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+
+# OLS: Anxiety ~ StressSurvey (optional overlay for the first panel)
+#| echo: false
+X = np.column_stack(
+    [np.ones(len(observDF)), observDF["StressSurvey"].to_numpy()]
+)
+beta_hat, *_ = np.linalg.lstsq(X, observDF["Anxiety"].to_numpy(), rcond=None)
+x_survey = np.linspace(
+    float(observDF["StressSurvey"].min()),
+    float(observDF["StressSurvey"].max()),
+    200,
+)
+y_fit_survey = beta_hat[0] + beta_hat[1] * x_survey
+
+# Three panels: same dependent variable (Anxiety) on y-axis; one predictor per panel on x-axis
+fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+panels = [
+    ("StressSurvey", "StressSurvey (survey proxy)"),
+    ("Stress", "Stress (blood test)"),
+    ("Time", "Time (minutes on social media)"),
+]
+
+for ax, (col, xlabel) in zip(axes, panels):
+    ax.scatter(
+        observDF[col],
+        observDF["Anxiety"],
+        alpha=0.85,
+        edgecolors="k",
+        linewidths=0.5,
+    )
+    ax.set_xlabel(xlabel)
+    if ax is axes[0]:
+        ax.set_ylabel("Anxiety")
+    # Regression line only for Anxiety ~ StressSurvey
+    if col == "StressSurvey":
+        ax.plot(
+            x_survey,
+            y_fit_survey,
+            color="crimson",
+            linewidth=2,
+            label="OLS: Anxiety ~ StressSurvey",
+        )
+        ax.legend(loc="best", fontsize=8)
+    ax.grid(True, alpha=0.3)
+
+fig.suptitle(
+    "Anxiety (vertical) vs each predictor (horizontal)",
+    y=1.02,
+)
+plt.tight_layout()
+plt.show()
+
+print("Estimated coefficients:")
+print(f"Intercept (beta_0): {beta_hat[0]:.3f}")
+print(f"Slope for StressSurvey (beta_1): {beta_hat[1]:.3f}")
+
+print("\nRegression equation:")
+print(f"Anxiety_hat = {beta_hat[0]:.3f} + {beta_hat[1]:.3f} * StressSurvey")
+```
+
+(2)Interpretation: 
+The regression of Anxiety on StressSurvey produces the fitted line: Anxiety = -1.524 + 1.047 * StressSurvey.
+
+This line fits the left panel very well, showing a clear positive relationship between StressSurvey and Anxiety. However, this does not represent the true data‑generating process. In reality, Anxiety is determined by: Anxiety=1 * Stress+ 0.1 * Time, with a true intercept of 0. ‘StressSurvey’ is only a noisy proxy for Stress and contains no information about Time.
+
+Therefore, the estimated slope 1.047 is not the true Stress coefficient (which is 1), and the intercept −1.524 is far from the true value 0. The fitted line matches the left plot visually, but its coefficients do not reflect the true causal effects.
+
+(3)Analysis:
+The left panel shows that the fitted line -1.524+1.047* StressSurvey, aligns well with the observed Anxiety–StressSurvey scatterplot, indicating a good statistical fit for this bivariate regression.
+
+But the other two panels reveal why this is misleading: Anxiety is actually driven by both Stress and Time, while the regression uses only StressSurvey. Because StressSurvey is an imperfect proxy for Stress and ignores Time completely, the model can look good visually but still produce biased coefficients.
+
+So the regression fits the observed data well, but it does not recover the true underlying relationship.
+
 
 3. **Bivariate Regression: Anxiety on Time.** Run a bivariate regression of Anxiety on Time. What are the estimated coefficients? How do they compare to the true relationship?
 
