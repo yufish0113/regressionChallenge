@@ -129,15 +129,27 @@ For every regression you run below, compare your estimated coefficients to these
 Are your estimates close? If not, your model is telling a wrong story -- even if R-squared is high and p-values are small.
 ::::
 
-### Questions for 75% Grade
 
 1. **Bivariate Regression: Anxiety on StressSurvey.** Run a bivariate regression of Anxiety on StressSurvey. What are the estimated coefficients? How do they compare to the true relationship?
 (1) Bivariate Regression: Anxiety on StressSurvey
 ```{python}
 #| echo: false
-beta_hat, *_ = np.linalg.lstsq(X, observDF["Anxiety"], rcond=None)
-print("Intercept:", beta_hat[0])
-print("Slope:", beta_hat[1])
+# Construct X matrix: intercept + StressSurvey
+X = np.column_stack([
+    np.ones(len(observDF)),
+    observDF["StressSurvey"].to_numpy()
+])
+
+# y vector
+y = observDF["Anxiety"].to_numpy()
+
+# Run OLS
+beta_hat, *_ = np.linalg.lstsq(X, y, rcond=None)
+
+# Print coefficients
+print("Estimated coefficients:")
+print(f"Intercept: {beta_hat[0]:.3f}")
+print(f"Slope for StressSurvey: {beta_hat[1]:.3f}")
 ```
 
 （2）Interpretation:
@@ -228,12 +240,189 @@ So the regression fits the observed data well, but it does not recover the true 
 
 
 3. **Bivariate Regression: Anxiety on Time.** Run a bivariate regression of Anxiety on Time. What are the estimated coefficients? How do they compare to the true relationship?
+(1) Bivariate Regression: Anxiety on Time
+```{python}
+# Bivariate regression for Question 3:
+# Regress Anxiety (dependent variable) on Time (independent variable)
+#| echo: false
+import numpy as np
+import pandas as pd
+
+# Build the design matrix with an intercept and Time
+X_time = np.column_stack(
+    [np.ones(len(observDF)), observDF["Time"].to_numpy()]
+)
+
+# Extract the dependent variable as a NumPy array
+y_anxiety = observDF["Anxiety"].to_numpy()
+
+# Estimate OLS coefficients using least squares
+beta_time, *_ = np.linalg.lstsq(X_time, y_anxiety, rcond=None)
+
+# Compute fitted values and R-squared
+y_hat_time = X_time @ beta_time
+ss_res_time = np.sum((y_anxiety - y_hat_time) ** 2)
+ss_tot_time = np.sum((y_anxiety - np.mean(y_anxiety)) ** 2)
+r2_time = 1 - ss_res_time / ss_tot_time
+
+# Format the regression output table
+q3_results = pd.DataFrame(
+    {
+        "Coefficient": ["Intercept (beta_0)", "Time (beta_1)"],
+        "Estimate": beta_time,
+    }
+)
+
+# Print coefficients and model fit
+print(q3_results)
+print(f"R-squared: {r2_time:.6f}")
+```
+
+(2)Interpretation:
+① From the bivariate regression of Anxiety on Time, we obtain the fitted line: Anxiety=-3.680 + 5.341*Time. 
+So the estimated coefficients are: Intercept= −3.680 ; Slope for Time=5.341.
+② The true data‑generating model is: Anxiety=1 * Stress+ 0.1 * Time.
+The bivariate regression we generate estimates a much larger slope (5.341 VS 1). This happens because the regression uses only Time and omits Stress, which is the main driver of Anxiety. Since Time is correlated with Stress in the simulated data, the regression incorrectly attributes part of Stress’s effect to Time. As a result, both the slope and intercept are far from the true values. The model captures an association between Time and Anxiety, but it does not reflect the true causal effect of Time in the underlying process.
+
 
 4. **Visualization: Time vs Anxiety.** Create a scatter plot with the regression line showing the relationship between Time and Anxiety. Comment on the fit and any potential issues.
+(1)Visualization: Time vs Anxiety
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Fit OLS for Anxiety ~ Time to draw the regression line in the Time panel
+#| echo: false
+X_time = np.column_stack([np.ones(len(observDF)), observDF["Time"].to_numpy()])
+beta_time, *_ = np.linalg.lstsq(X_time, observDF["Anxiety"].to_numpy(), rcond=None)
+
+# Create a smooth x-grid and fitted line for the Time panel
+x_time = np.linspace(
+    float(observDF["Time"].min()),
+    float(observDF["Time"].max()),
+    200,
+)
+y_fit_time = beta_time[0] + beta_time[1] * x_time
+
+# Create three panels:
+# y-axis (dependent variable) is always Anxiety
+# x-axis (independent variables) are StressSurvey, Stress, and Time
+fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+panels = [
+    ("StressSurvey", "StressSurvey (survey proxy)"),
+    ("Stress", "Stress (blood test)"),
+    ("Time", "Time (minutes on social media)"),
+]
+
+for ax, (col, xlabel) in zip(axes, panels):
+    ax.scatter(
+        observDF[col],
+        observDF["Anxiety"],
+        alpha=0.85,
+        edgecolors="k",
+        linewidths=0.5,
+    )
+    ax.set_xlabel(xlabel)
+
+    # Set the dependent variable label once on the left panel
+    if ax is axes[0]:
+        ax.set_ylabel("Anxiety")
+
+    # Draw the regression line only for Time vs Anxiety
+    if col == "Time":
+        ax.plot(
+            x_time,
+            y_fit_time,
+            color="crimson",
+            linewidth=2,
+            label="OLS: Anxiety ~ Time",
+        )
+        ax.legend(loc="best", fontsize=8)
+
+    ax.grid(True, alpha=0.3)
+
+fig.suptitle(
+    "Anxiety (vertical) vs predictors (horizontal): StressSurvey, Stress, and Time",
+    y=1.02,
+)
+plt.tight_layout()
+plt.show()
+```
+
+(2) Interpretation:
+From the visualization of Time vs Anxiety, the fitted line: -3.680 + 5.341 * Time, matches the scatterplot fairly well, showing a clear positive association between Time and Anxiety. However, this pattern does not reflect the true data‑generating process. In the underlying model, Anxiety is determined by both Stress and Time: Anxiety=1 * Stress+0.1 * Time. The estimated slope (5.341) is much larger than the true Time coefficient (0.1), and the intercept (−3.680) also deviates from the true value 0. The fitted line captures the observed correlation in the plot, but the coefficients do not represent the true causal effects.
+
+(3) Analysis:
+ The plot shows that the fitted line aligns well with the Time–Anxiety data, suggesting a good statistical fit. However, this fit is misleading. Anxiety is jointly determined by Stress and Time, yet the regression includes only Time. Since Time is correlated with Stress in the data, the model incorrectly attributes part of Stress’s effect to Time. As a result, the coefficients are biased even though the line appears to fit the scatterplot well.
+
 
 5. **Multiple Regression: StressSurvey + Time.** Run a multiple regression of Anxiety on both **StressSurvey** and Time. What are the estimated coefficients? How do they compare to the true coefficients?
+(1) Multiple Regression: StressSurvey + Time
+```{python}
+#| echo: false
+# Question 5: Multiple regression
+# Model: Anxiety ~ StressSurvey + Time
 
-### Questions for 85% Grade
+import numpy as np
+
+# Build the design matrix with an intercept, StressSurvey, and Time
+X_multi = np.column_stack([
+    np.ones(len(observDF)),
+    observDF["StressSurvey"].to_numpy(),
+    observDF["Time"].to_numpy(),
+])
+
+# Dependent variable
+y = observDF["Anxiety"].to_numpy()
+
+# Estimate OLS coefficients using least squares
+beta_multi, *_ = np.linalg.lstsq(X_multi, y, rcond=None)
+
+# Compute fitted values and R-squared
+y_hat_multi = X_multi @ beta_multi
+ss_res_multi = np.sum((y - y_hat_multi) ** 2)
+ss_tot_multi = np.sum((y - np.mean(y)) ** 2)
+r2_multi = 1 - ss_res_multi / ss_tot_multi
+
+# True coefficients for comparison:
+# beta_0 (intercept) = 0
+# beta_Stress (true Stress, not StressSurvey) = 1
+# beta_Time = 0.1
+true_beta_0 = 0.0
+true_beta_time = 0.1
+
+# Print model estimates
+print("\n=== Q5: Multiple Regression (Anxiety ~ StressSurvey + Time) ===")
+print("Estimated coefficients:")
+print(f"  - Intercept (beta_0): {beta_multi[0]:.6f}")
+print(f"  - StressSurvey coefficient (beta_1): {beta_multi[1]:.6f}")
+print(f"  - Time coefficient (beta_2): {beta_multi[2]:.6f}")
+print(f"  - R-squared: {r2_multi:.6f}")
+
+# Print fitted equation
+print("\nFitted equation:")
+print(
+    f"  Anxiety_hat = {beta_multi[0]:.6f} "
+    f"+ {beta_multi[1]:.6f} * StressSurvey "
+    f"+ {beta_multi[2]:.6f} * Time"
+)
+
+# Print comparison to true coefficients
+print("\nComparison to true coefficients:")
+print(f"  - True intercept: {true_beta_0:.3f}")
+print("  - True stress coefficient is 1.000 on Stress (not on StressSurvey)")
+print(f"  - True Time coefficient: {true_beta_time:.3f}")
+print(f"  - Difference in intercept: {beta_multi[0] - true_beta_0:+.6f}")
+print(f"  - Difference in Time coefficient: {beta_multi[2] - true_beta_time:+.6f}")
+print("  - Note: beta_1 here is on StressSurvey, so it is not directly comparable to the true Stress coefficient (1.0).")
+```
+
+（2）Interpretation:
+① From the multiple regression of Anxiety on StressSurvey and Time, we get: Anxiety=0.589+1.427 *  StressSurvey - 2.780 * Time.
+So the estimated coefficients are: Intercept=0.589 ; StressSurvey coefficient=1.427 ; Time coefficient=−2.780
+② The true model is: Anxiety=1*Stress+0.1*Time.
+Because the regression uses ‘StressSurvey’ instead of true ‘Stress’, and because ‘Time’ is correlated with ‘Stress’ in the data, the model cannot recover the true causal parameters. The coefficient on ‘StressSurvey’ does not match the true Stress coefficient (1), and the estimated Time coefficient (−2.780) is far from the true value (0.1). Although the multiple regression fits the data well, the coefficients remain biased due to measurement error in ‘StressSurvey’ and omitted‑variable effects related to ‘Stress’.
+
 
 6. **Multiple Regression: Stress + Time.** Run a multiple regression of Anxiety on both **Stress** and Time. What are the estimated coefficients? How do they compare to the true relationship?
 
@@ -247,15 +436,6 @@ So the regression fits the observed data well, but it does not recover the true 
 
 9. **Avoiding Misleading Statistical Significance.** Reflect on this tip: split the sample into meaningful subsets ("statistical regimes") and use graphical diagnostics for linearity rather than blind reliance on "canned" regressions. Apply this approach to the multiple regression of Anxiety on both StressSurvey and Time by analyzing a smartly chosen subset of the data. What specific subset did you choose and why? Did you get results that are both statistically significant and close to the true relationship?
 
-## Submission Checklist ✅
-
-- [ ] Forked starter repository from [https://github.com/flyaflya/regressionChallenge](https://github.com/flyaflya/regressionChallenge)
-- [ ] Cloned repository locally using Cursor (or VS Code)
-- [ ] Analysis written in `index.qmd` with clear Q&A narrative
-- [ ] Document rendered to HTML successfully
-- [ ] HTML committed and pushed to your forked repository
-- [ ] GitHub Pages enabled (Deploy from a branch → main → /(root))
-- [ ] Site accessible at `https://[your-username].github.io/regressionChallenge/`
 
 ## Appendix: Regression Concepts Reference {#sec-regression-concepts}
 
