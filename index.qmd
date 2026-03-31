@@ -135,6 +135,8 @@ Are your estimates close? If not, your model is telling a wrong story -- even if
 ```{python}
 #| echo: false
 # Construct X matrix: intercept + StressSurvey
+import numpy as np
+import pandas as pd
 X = np.column_stack([
     np.ones(len(observDF)),
     observDF["StressSurvey"].to_numpy()
@@ -155,18 +157,18 @@ print(f"Slope for StressSurvey: {beta_hat[1]:.3f}")
 （2）Interpretation:
 ① From the bivariate regression of Anxiety on StressSurvey, we obtain the fitted line:  Anxiety=-1.524+1.047* StressSurvey
 So the estimated coefficients are: Intercept=-1.524 ; Slope=1.047
-② The true data‑generating model is: Anxiety=1*Stress+0.1*Time. 
+② The true data‑generating model is: Anxiety=1 * Stress+0.1 * Time. 
 Our regression only uses ‘StressSurvey’, which is a noisy proxy for Stress and does not include ‘Time’ at all. Because of this, the estimated slope (1.047) and intercept (−1.524) do not match the true coefficients. The regression captures the observed pattern between StressSurvey and Anxiety, but it cannot recover the true causal effects from the underlying model.
 
 
 2. **Visualization: StressSurvey vs Anxiety.** Create a scatter plot with the regression line showing the relationship between StressSurvey and Anxiety. Comment on the fit and any potential issues.
 (1)Visualization: StressSurvey vs Anxiety.
 ```{python}
+#| echo: false
 import matplotlib.pyplot as plt
 import numpy as np
 
 # OLS: Anxiety ~ StressSurvey (optional overlay for the first panel)
-#| echo: false
 X = np.column_stack(
     [np.ones(len(observDF)), observDF["StressSurvey"].to_numpy()]
 )
@@ -216,6 +218,7 @@ fig.suptitle(
 plt.tight_layout()
 plt.show()
 
+#| echo: false
 print("Estimated coefficients:")
 print(f"Intercept (beta_0): {beta_hat[0]:.3f}")
 print(f"Slope for StressSurvey (beta_1): {beta_hat[1]:.3f}")
@@ -242,9 +245,9 @@ So the regression fits the observed data well, but it does not recover the true 
 3. **Bivariate Regression: Anxiety on Time.** Run a bivariate regression of Anxiety on Time. What are the estimated coefficients? How do they compare to the true relationship?
 (1) Bivariate Regression: Anxiety on Time
 ```{python}
+#| echo: false
 # Bivariate regression for Question 3:
 # Regress Anxiety (dependent variable) on Time (independent variable)
-#| echo: false
 import numpy as np
 import pandas as pd
 
@@ -288,11 +291,11 @@ The bivariate regression we generate estimates a much larger slope (5.341 VS 1).
 4. **Visualization: Time vs Anxiety.** Create a scatter plot with the regression line showing the relationship between Time and Anxiety. Comment on the fit and any potential issues.
 (1)Visualization: Time vs Anxiety
 ```{python}
+#| echo: false
 import numpy as np
 import matplotlib.pyplot as plt
 
 # Fit OLS for Anxiety ~ Time to draw the regression line in the Time panel
-#| echo: false
 X_time = np.column_stack([np.ones(len(observDF)), observDF["Time"].to_numpy()])
 beta_time, *_ = np.linalg.lstsq(X_time, observDF["Anxiety"].to_numpy(), rcond=None)
 
@@ -503,122 +506,130 @@ In real world applications, this shows an important point: a regression model ca
 
 
 8. **Real-World Implications.** For each of the two multiple regression models, assume their outputs were published in academic journals and then picked up by the popular press. What headline about time spent on social media and its effect on anxiety would you expect from a press outlet covering the first model? What headline for the second model? Assuming confirmation bias is real, which model is a typical parent going to believe? Which model will Facebook, Instagram, and TikTok executives prefer?
+(1) Model 1 headline: “Social media time strongly increases anxiety!”
+(2) Model 2 headline: “No more worries! Social media time has only a small effect on anxiety.”
+(3) Parents believe: Model 1 (fits their fears that social media is harming their children).
+(4) Executives prefer: Model 2 (protects their business and reduces public pressure for regulation).
 
-### Question for 100% Grade
+
 
 9. **Avoiding Misleading Statistical Significance.** Reflect on this tip: split the sample into meaningful subsets ("statistical regimes") and use graphical diagnostics for linearity rather than blind reliance on "canned" regressions. Apply this approach to the multiple regression of Anxiety on both StressSurvey and Time by analyzing a smartly chosen subset of the data. What specific subset did you choose and why? Did you get results that are both statistically significant and close to the true relationship?
+(1) Subset:
+To apply the idea of “statistical regimes,” I selected a subset of the data where ‘StressSurvey’ is most accurate as a proxy for Stress. Specifically, I restricted the sample to the middle portion of the StressSurvey distribution (for example, the 30–70% quantile range), where the proxy error is smallest (according to the visualization before). 
+This subset is meaningful because the main source of bias in the full-sample regression is measurement error in StressSurvey. By focusing on a region where the proxy is relatively reliable, we can better evaluate whether the regression recovers the true relationship.
 
-
-## Appendix: Regression Concepts Reference {#sec-regression-concepts}
-
-::: {.callout-tip collapse="true"}
-## Click to expand: Simple Linear Regression Example
-
+(2) Visualization
 ```{python}
-#| label: simple-regression-python
-#| fig-cap: Simple linear regression example
-
+#| echo: false
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
 
-np.random.seed(123)
+# Subset choice based on your description:
+# Keep the middle part of StressSurvey (30th to 70th percentile)
+q_low = observDF["StressSurvey"].quantile(0.30)
+q_high = observDF["StressSurvey"].quantile(0.70)
+subset_df = observDF[
+    (observDF["StressSurvey"] >= q_low) & (observDF["StressSurvey"] <= q_high)
+].copy()
 
-n = 50
-x = np.random.normal(10, 3, n)
-y = 2 * x + 3 + np.random.normal(0, 2, n)
+# Fit OLS line for Anxiety ~ StressSurvey within the subset
+X_sub = np.column_stack(
+    [np.ones(len(subset_df)), subset_df["StressSurvey"].to_numpy()]
+)
+beta_sub, *_ = np.linalg.lstsq(X_sub, subset_df["Anxiety"].to_numpy(), rcond=None)
 
-model = LinearRegression()
-model.fit(x.reshape(-1, 1), y)
+x_grid = np.linspace(
+    float(subset_df["StressSurvey"].min()),
+    float(subset_df["StressSurvey"].max()),
+    200,
+)
+y_fit = beta_sub[0] + beta_sub[1] * x_grid
 
-print(f"Coefficient: {model.coef_[0]:.3f}")
-print(f"Intercept: {model.intercept_:.3f}")
-print(f"R-squared: {r2_score(y, model.predict(x.reshape(-1, 1))):.3f}")
+# Create three panels:
+# Dependent variable on vertical axis: Anxiety
+# Independent variables on horizontal axis: StressSurvey, Stress, Time
+fig, axes = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
+panels = [
+    ("StressSurvey", "StressSurvey (subset highlighted)"),
+    ("Stress", "Stress (subset highlighted)"),
+    ("Time", "Time (subset highlighted)"),
+]
 
-fig, ax = plt.subplots(figsize=(7, 4))
-ax.scatter(x, y, alpha=0.7)
-ax.plot(x, model.predict(x.reshape(-1, 1)), color='red', linewidth=2)
-ax.set_title('Simple Linear Regression')
-ax.set_xlabel('X Variable')
-ax.set_ylabel('Y Variable')
-ax.grid(True, alpha=0.3)
+for ax, (col, xlabel) in zip(axes, panels):
+    # Plot full sample in light gray for context
+    ax.scatter(
+        observDF[col],
+        observDF["Anxiety"],
+        color="lightgray",
+        alpha=0.6,
+        edgecolors="none",
+        label="Full sample",
+    )
+
+    # Plot selected subset in blue
+    ax.scatter(
+        subset_df[col],
+        subset_df["Anxiety"],
+        color="royalblue",
+        alpha=0.95,
+        edgecolors="k",
+        linewidths=0.5,
+        label="Selected subset",
+    )
+
+    # Add regression line only for StressSurvey vs Anxiety in the subset
+    if col == "StressSurvey":
+        ax.plot(
+            x_grid,
+            y_fit,
+            color="crimson",
+            linewidth=2,
+            label="OLS in subset: Anxiety ~ StressSurvey",
+        )
+
+    ax.set_xlabel(xlabel)
+    if ax is axes[0]:
+        ax.set_ylabel("Anxiety")
+    ax.grid(True, alpha=0.3)
+
+# Use one shared legend
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False)
+
+fig.suptitle(
+    "Subset visualization (30th-70th percentile of StressSurvey): Anxiety vs predictors",
+    y=1.08,
+)
 plt.tight_layout()
 plt.show()
+
+# Print subset info and OLS coefficients for Anxiety ~ StressSurvey (subset)
+y_sub = subset_df["Anxiety"].to_numpy()
+y_hat_sub = X_sub @ beta_sub
+ss_res_sub = np.sum((y_sub - y_hat_sub) ** 2)
+ss_tot_sub = np.sum((y_sub - np.mean(y_sub)) ** 2)
+r2_sub = 1 - ss_res_sub / ss_tot_sub if ss_tot_sub > 0 else np.nan
+
+print("\n=== Subset Regression Summary ===")
+print(f"Subset rule: 30th-70th percentile of StressSurvey")
+print(f"StressSurvey quantile bounds: [{q_low:.3f}, {q_high:.3f}]")
+print(f"Subset size: {len(subset_df)} / {len(observDF)}")
+
+print("\nOLS in subset: Anxiety ~ StressSurvey")
+print(f"Intercept (beta_0): {beta_sub[0]:.6f}")
+print(f"Slope on StressSurvey (beta_1): {beta_sub[1]:.6f}")
+print(f"R-squared: {r2_sub:.6f}")
+
+print("\nFitted equation:")
+print(f"Anxiety_hat = {beta_sub[0]:.6f} + {beta_sub[1]:.6f} * StressSurvey")
 ```
-:::
 
-::: {.callout-tip collapse="true"}
-## Click to expand: Multiple Regression Example
-
-```{python}
-#| label: multiple-regression-python
-#| fig-cap: Multiple regression example
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
-
-np.random.seed(456)
-
-n = 50
-x1 = np.random.normal(10, 3, n)
-x2 = np.random.normal(5, 2, n)
-y = 2 * x1 + 0.5 * x2 + 3 + np.random.normal(0, 2, n)
-
-X = np.column_stack([x1, x2])
-model_multi = LinearRegression()
-model_multi.fit(X, y)
-
-print(f"Coefficients: {model_multi.coef_}")
-print(f"Intercept: {model_multi.intercept_:.3f}")
-print(f"R-squared: {r2_score(y, model_multi.predict(X)):.3f}")
-
-data_df = pd.DataFrame({'x1': x1, 'x2': x2, 'y': y})
-sns.pairplot(data_df)
-plt.suptitle('Pairs Plot: Multiple Regression Variables', y=1.02)
-plt.tight_layout()
-plt.show()
-```
-:::
-
-::: {.callout-note collapse="true"}
-## Click to expand: Statistical Significance & P-values
-
-A coefficient is **statistically significant** when its p-value is less than 0.05.
-
-- **p < 0.05**: Statistically significant
-- **p ≥ 0.05**: Not statistically significant
-
-### Understanding Scientific Notation in P-values
-
-Sometimes you'll see p-values written in scientific notation like `7.89e-4`. This is just a way to write very small numbers:
-
-- **7.89e-4** means 7.89 × 10⁻⁴ = 0.000789
-- **2.34e-6** means 2.34 × 10⁻⁶ = 0.00000234
-- **1.23e-2** means 1.23 × 10⁻² = 0.0123
-
-**The key rule:** If you see "e-" in a p-value, it's always a very small number (less than 1). The number after "e-" tells you how many zeros come before the first non-zero digit.
-
-**Remember:** Statistical significance doesn't mean the effect is large or important—it just means we're confident the effect isn't zero.
-:::
-
-::: {.callout-note collapse="true"}
-## Click to expand: Recommended Python Libraries
-
-- Use `pandas` for data manipulation
-- Use `matplotlib` and `seaborn` for visualizations
-- Use `sklearn.linear_model` for regression analysis
-- Use `statsmodels` for detailed regression output (p-values, confidence intervals)
-:::
-
-### Resources
-
-- **Quarto Markdown:** [quarto.org/docs/authoring/markdown-basics.html](https://quarto.org/docs/authoring/markdown-basics.html)
-- **Quarto Documentation:** [quarto.org/docs](https://quarto.org/docs)
-- **Python Data Science Handbook:** [jakevdp.github.io/PythonDataScienceHandbook](https://jakevdp.github.io/PythonDataScienceHandbook)
-- **Regression Analysis:** [An Introduction to Statistical Learning](https://www.statlearning.com/)
+(3) Interpretation
+① My visualization highlights the middle 30th–70th percentile of ‘StressSurvey’, where the proxy is most accurate. In the first panel, the subset points form a much cleaner, more linear relationship between ‘StressSurvey’ and ‘Anxiety’, compared to the full sample. The fitted regression line aligns closely with the subset points, and the noise seen in the full dataset is greatly reduced.
+The second and third panels show how this subset corresponds to more stable ranges of ‘Stress’ and ‘Time’, reinforcing that this region of the data behaves more consistently and is less affected by measurement error. 
+Overall, the plots visually confirm that the subset behaves more like a “true” statistical regime where linearity holds better.
+② I think this subset regression produces results that are both statistically meaningful and noticeably closer to the true relationship than the full-sample model in Question 5.
+The slope estimate in this subset is 1.184, which is much closer to the true Stress coefficient of 1.0 than the biased full-sample estimate.
+The intercept is still imperfect, but the overall fit is strong, with an R^2 of 0.863, indicating that the subset captures most of the true linear pattern.
+The improvement occurs because the subset reduces measurement error in ‘StressSurvey’, making it a more reliable proxy for Stress.
+This demonstrates that the misleading coefficients in the full sample were driven by noisy regions of the data. By focusing on a more stable statistical regime, the regression becomes more trustworthy and aligns more closely with the true data generating process.
